@@ -10,7 +10,6 @@
 
 #import "ReactNativePermissions.h"
 
-#import <RCTBridge.h>
 #import <RCTConvert.h>
 //#import <RCTEventDispatcher.h>
 
