@@ -17,11 +17,18 @@ The current supported permissions are:
 
 | Version | React Native Support |
 |---|---|
+| 1.0.0 | 0.40.0 - 0.45.0 |
 | 0.2.7 | 0.40.0 - 0.41.0 |
 | 0.2.5 | 0.33.0 - 0.39.0 |
 *Complies with [react-native-version-support-table](https://github.com/dangnelson/react-native-version-support-table)*
 
-##General Usage
+### Breaking changes in version 1.0.0
+  - Now using React Native's own JS PermissionsAndroid library on Android, which is great because now we no longer have to do any additional linking (on Android)
+  - Updated API to be closer to RN's PermissionsAndroid
+  - Removed `openSettings()` support on Android (to stay linking-free). There are several NPM modules available for this
+  - `restricted` status now supported on Android, although it means something different than iOS
+
+## General Usage
 ```
 npm install --save react-native-permissions
 rnpm link
@@ -35,7 +42,7 @@ const Permissions = require('react-native-permissions');
 //...
   //check the status of a single permission
   componentDidMount() {
-    Permissions.getPermissionStatus('photo')
+    Permissions.check('photo')
       .then(response => {
         //response is one of: 'authorized', 'denied', 'restricted', or 'undetermined'
         this.setState({ photoPermission: response })
@@ -44,7 +51,7 @@ const Permissions = require('react-native-permissions');
 
   //request permission to access photos
   _requestPermission() {
-    Permissions.requestPermission('photo')
+    Permissions.request('photo')
       .then(response => {
         //returns once the user has chosen to 'allow' or to 'not allow' access
         //response is one of: 'authorized', 'denied', 'restricted', or 'undetermined'
@@ -54,7 +61,7 @@ const Permissions = require('react-native-permissions');
 
   //check the status of multiple permissions
   _checkCameraAndPhotos() {
-    Permissions.checkMultiplePermissions(['camera', 'photo'])
+    Permissions.check(['camera', 'photo'])
       .then(response => {
         //response is an object mapping type to permission
         this.setState({
@@ -85,19 +92,19 @@ const Permissions = require('react-native-permissions');
 //...
 ```
 
-##API
+## API
 
-###Permission statuses
+### Permission statuses
 Promises resolve into one of these statuses
 
 | Return value | Notes|
 |---|---|
 |`authorized`| user has authorized this permission |
 |`denied`| user has denied this permission at least once. On iOS this means that the user will not be prompted again. Android users can be promted multiple times until they select 'Never ask me again'|
-|`restricted`| *(iOS only)* user is not able to grant this permission, either because it's not supported by the device or because it has been blocked by parental controls. |
+|`restricted`| **iOS** - this means user is not able to grant this permission, either because it's not supported by the device or because it has been blocked by parental controls. **Android** - this means that the user has selected 'Never ask me again' while denying permission |
 |`undetermined`| user has not yet been prompted with a permission dialog |
 
-###Supported permission types
+### Supported permission types
 
 | Name | iOS | Android |
 |---|---|---|
@@ -114,36 +121,35 @@ Promises resolve into one of these statuses
 |`speechRecognition`| ✔️ | ❌ |
 |`storage`| ❌️ | ✔ |
 
-###Methods
+### Methods
 | Method Name | Arguments | Notes
 |---|---|---|
-| `getPermissionStatus` | `type` | - Returns a promise with the permission status. See iOS Notes for special cases |
-| `requestPermission` | `type` | - Accepts any permission type except `backgroundRefresh`. If the current status is `undetermined`, shows the permission dialog and returns a promise with the resulting status. Otherwise, immediately return a promise with the current status. See iOS Notes for special cases|
-| `checkMultiplePermissions` | `[types]` | - Accepts an array of permission types and returns a promise with an object mapping permission types to statuses |
-| `getPermissionTypes` | *none* | - Returns an array of valid permission types  |
-| `openSettings` | *none* | - Switches the user to the settings page of your app (iOS 8.0 and later)  |
-| `canOpenSettings` | *none* | - Returns a boolean indicating if the device supports switching to the settings page |
+| `check()` | `type` | - Returns a promise with the permission status. See iOS Notes for special cases |
+| `request()` | `type` | - Accepts any permission type except `backgroundRefresh`. If the current status is `undetermined`, shows the permission dialog and returns a promise with the resulting status. Otherwise, immediately return a promise with the current status. See iOS Notes for special cases|
+| `checkMultiple()` | `[types]` | - Accepts an array of permission types and returns a promise with an object mapping permission types to statuses |
+| `getTypes()` | *none* | - Returns an array of valid permission types  |
+| `openSettings()` | *none* | - *(iOS only - 8.0 and later)* Switches the user to the settings page of your app |
+| `canOpenSettings()` | *none* | - *(iOS only)* Returns a boolean indicating if the device supports switching to the settings page |
 
-###iOS Notes
-Permission type `bluetooth` represents the status of the `CBPeripheralManager`. Don't use this if only need `CBCentralManager`
+### iOS Notes
+- Permission type `bluetooth` represents the status of the `CBPeripheralManager`. Don't use this if only need `CBCentralManager`
+- Permission type `location` accepts a second parameter for `request()` and `check()`;  the second parameter is a string, either `always` or `whenInUse`(default).
 
-Permission type `location` accepts a second parameter for `requestPermission` and `getPermissionStatus`;  the second parameter is a string, either `always` or `whenInUse`(default).
-
-Permission type `notification` accepts a second parameter for `requestPermission`. The second parameter is an array with the desired alert types. Any combination of `alert`, `badge` and `sound` (default requests all three)
+- Permission type `notification` accepts a second parameter for `request()`. The second parameter is an array with the desired alert types. Any combination of `alert`, `badge` and `sound` (default requests all three)
 
 ```js
 ///example
-    Permissions.getPermissionStatus('location', 'always')
+    Permissions.check('location', 'always')
       .then(response => {
         this.setState({ locationPermission: response })
       })
 
-    Permissions.requestPermission('location', 'always')
+    Permissions.request('location', 'always')
       .then(response => {
         this.setState({ locationPermission: response })
       })
 
-    Permissions.requestPermission('notification', ['alert', 'badge'])
+    Permissions.request('notification', ['alert', 'badge'])
       .then(response => {
         this.setState({ notificationPermission: response })
       })
@@ -157,86 +163,67 @@ Example:
 If you need Contacts permission you have to add the key "Privacy - Contacts Usage Description".
 <img width="338" alt="3cde3b44-7ffd-11e6-918b-63888e33f983" src="https://cloud.githubusercontent.com/assets/1440796/18713019/271be540-8011-11e6-87fb-c3828c172dfc.png">
 
-###Android Notes
+### Android Notes
 
 Requires RN >= 0.29.0
 
-All required permissions also need to be included in the Manifest before they can be requested. Otherwise `requestPermission` will immediately return `denied`.
+Uses RN's own `PermissionsAndroid` JS api (http://facebook.github.io/react-native/releases/0.45/docs/permissionsandroid.html)
 
-Permissions are automatically accepted for targetSdkVersion < 23 but you can still use `getPermissionStatus` to check if the user has disabled them from Settings.
+All required permissions also need to be included in the Manifest before they can be requested. Otherwise `request()` will immediately return `denied`.
 
-Here's a map of types to Android system permissions names:
-`location` -> `android.permission.ACCESS_FINE_LOCATION`
-`camera` -> `android.permission.CAMERA`
-`microphone` -> `android.permission.RECORD_AUDIO`
-`photo` -> `android.permission.READ_EXTERNAL_STORAGE`
-`storage` -> `android.permission.READ_EXTERNAL_STORAGE`
-`contacts` -> `android.permission.READ_CONTACTS`
-`event` -> `android.permission.READ_CALENDAR`
-
+Permissions are automatically accepted for targetSdkVersion < 23 but you can still use `check()` to check if the user has disabled them from Settings.
 
 You can request write access to any of these types by also including the appropriate write permission in the Manifest. Read more here: https://developer.android.com/guide/topics/security/permissions.html#normal-dangerous
 
-##Setup
+## Setup
 
 ````
 npm install --save react-native-permissions
 rnpm link
 ````
 
-###Or manualy linking
+### Or manualy linking
 
-####iOS
+#### iOS
 * Run open node_modules/react-native-permissions
 * Drag ReactNativePermissions.xcodeproj into the Libraries group of your app's Xcode project
 * Add libReactNativePermissions.a to `Build Phases -> Link Binary With Libraries.
 
-####Android
-#####Step 1 - Update Gradle Settings
+#### Android
+  No additional linking required
+
+## AppStore submission disclaimer
+
+If you need to submit you application to the AppStore, you need to add to your `Info.plist` all `*UsageDescription` keys with a string value explaining to the user how the app uses this data. **Even if you don't use them**.
+
+So before submitting your app to the `AppStore`, make sure that in your `Info.plist` you have the following keys:
 
 ```
-// file: android/settings.gradle
-...
 
-include ':react-native-permissions'
-project(':react-native-permissions').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-permissions/android')
-```
-#####Step 2 - Update Gradle Build
+<key>NSBluetoothPeripheralUsageDescription</key>
+<string>Some description</string>
+<key>NSCalendarsUsageDescription</key>
+<string>Some description</string>
+<key>NSCameraUsageDescription</key>
+<string>Some description</string>
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Some description</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Some description</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Some description</string>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>Some description</string>
 
-```
-// file: android/app/build.gradle
-...
-
-dependencies {
-    ...
-    compile project(':react-native-permissions')
-}
-```
-#####Step 3 - Register React Package
-```
-...
-import com.joshblour.reactnativepermissions.ReactNativePermissionsPackage; // <--- import
-
-public class MainApplication extends Application implements ReactApplication {
-
-    ...
-
-    @Override
-    protected List<ReactPackage> getPackages() {
-        return Arrays.<ReactPackage>asList(
-            new MainReactPackage(),
-            new ReactNativePermissionsPackage() // <------ add the package
-        );
-    }
-
-    ...
-}
 ```
 
-##Troubleshooting
+This is required because during the phase of `processing` in the `AppStore` submission, the system detects that you app contains code to request the permission `X` but don't have the `UsageDescription` key and rejects the build.
 
-#### Q: Android - `undefined is not a object (evaluating 'RNPermissions.requestPermissions')`
-A: `rnpm` may not have linked correctly. Follow the manual linking steps and make sure the library is linked
+> Please note that it will only be shown to the users the usage descriptions of the permissions you really require in your app.
+
+You can find more informations about this issue in #46.
+
+## Troubleshooting
 
 #### Q: iOS - app crashes as soon as I request permission
 A: starting with xcode 8, you need to add permission descriptions. see iOS notes for more details. Thanks to @jesperlndk for discovering this.
