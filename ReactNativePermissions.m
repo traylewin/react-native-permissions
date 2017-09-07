@@ -10,32 +10,9 @@
 
 #import "ReactNativePermissions.h"
 
-<<<<<<< HEAD
 #import <RCTBridge.h>
 #import <RCTConvert.h>
 //#import <RCTEventDispatcher.h>
-=======
-#if __has_include(<React/RCTBridge.h>)
-  #import <React/RCTBridge.h>
-#elif __has_include("RCTBridge.h")
-  #import "RCTBridge.h"
-#else
-  #import "React/RCTBridge.h"
-#endif
-
-
-#if __has_include("RCTConvert.h")
-  #import "RCTConvert.h"
-#else
-  #import <React/RCTConvert.h>
-#endif
-
-#if __has_include("RCTEventDispatcher.h")
-  #import "RCTEventDispatcher.h"
-#else
-  #import <React/RCTEventDispatcher.h>
-#endif
->>>>>>> 34e035aa22efb46a96999627f9cd6ab96b3790d3
 
 #import "RNPLocation.h"
 #import "RNPBluetooth.h"
